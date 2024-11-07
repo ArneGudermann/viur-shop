@@ -162,6 +162,9 @@ class CartNodeSkel(TreeSkel):  # STATE: Complete (as in model)
         validHtml=None,
     )
 
+    customer = RelationalBone(
+        kind="user"
+    )
     name = StringBone(
     )
 
@@ -191,6 +194,7 @@ class CartNodeSkel(TreeSkel):  # STATE: Complete (as in model)
 
     project_data = JsonBone(
     )
+
 
 
 class CartItemSkel(TreeSkel):  # STATE: Complete (as in model)

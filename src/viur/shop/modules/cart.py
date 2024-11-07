@@ -68,15 +68,17 @@ class Cart(ShopModuleAbstract, Tree):
     def _ensure_current_session_cart(self):
         if not self.session.get("session_cart_key"):
             root_node = self.addSkel("node")
-            user = current.user.get() and current.user.get()["name"] or "__guest__"
+            user_name = current.user.get() and current.user.get()["name"] or "__guest__"
             root_node["is_root_node"] = True
-            root_node["name"] = f"Session Cart of {user} created at {utils.utcNow()}"
+            if user := current.user.get():
+                root_node.setBoneValue("customer", str(user["key"]))
+            root_node["name"] = f"Session Cart of {user_name} created at {utils.utcNow()}"
             root_node["cart_type"] = CartType.BASKET
             key = root_node.toDB()
             self.session["session_cart_key"] = key
             current.session.get().markChanged()
             # Store basket at the user skel, it will be shared over multiple sessions / devices
-            if user := current.user.get():
+            if user:
                 db.RunInTransaction(self._set_basket_txn, user_key=user["key"], basket_key=key)
         return self.session["session_cart_key"]
 
@@ -95,6 +97,9 @@ class Cart(ShopModuleAbstract, Tree):
         user_skel.setBoneValue("basket", basket_key)
         user_skel.toDB()
         return user_skel
+
+    def list_by_user(self, user_key: db.Key, *args, **kwargs) -> list:
+        return self.viewSkel("node").all().filter("customer.dest.__key__ =", user_key).fetch(99)
 
     def get_available_root_nodes(self, *args, **kwargs) -> list[dict[t.Literal["name", "key"], str]]:
         root_nodes = [self.current_session_cart]

@@ -3,7 +3,7 @@ import typing as t  # noqa
 from google.protobuf.message import DecodeError
 
 import viur.shop.types.exceptions as e
-from viur.core import db, errors, exposed, force_post
+from viur.core import current, db, errors, exposed, force_post
 from viur.core.render.json.default import DefaultRender as JsonRenderer
 from viur.shop.modules.abstract import ShopModuleAbstract
 from viur.shop.skeletons import ShippingSkel
@@ -280,6 +280,34 @@ class Api(ShopModuleAbstract):
             child["skel_type"] = "leaf" if issubclass(child_skel.skeletonCls, self.shop.cart.leafSkelCls) else "node"
             children.append(child)
         return JsonResponse(children)
+
+    @exposed
+    def cart_list_by_user(
+        self,
+        user_key: str | db.Key | None = None,
+    ):
+        """
+        List root nodes of all user carts
+
+        If no user_key is provided, the current user key will be used.
+
+        :param cart_key: list direct children (nodes and leafs) of this parent node
+        """
+        # no key: list root node
+
+        # key provided: list children (nodes and leafs)
+        if user := current.user.get():
+            current_user_key = user["key"]
+        else:
+            raise errors.Unauthorized
+        if user_key is None:
+            user_key = current_user_key
+        else:
+            user_key = self._normalize_external_key(user_key, "user_key")
+            if user_key != current_user_key and "root" not in user["access"]:
+                raise errors.Forbidden
+
+        return JsonResponse(self.shop.cart.list_by_user(user_key))
 
     @exposed
     @force_post
